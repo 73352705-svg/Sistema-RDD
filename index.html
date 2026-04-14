@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Trámite Documentario | Grupo 01</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo-container">
+            <img src="https://cdn-icons-png.flaticon.com/512/2912/2912773.png" alt="Logo Sistema" class="logo">
+            <h2>Sistema de Registro y Distribución</h2>
+        </div>
+        <div class="user-actions">
+            <span class="user-info">Usuario: Analista Mesa de Partes</span>
+            <button id="btnDarkMode" class="btn btn-secondary" style="margin-left: 15px; padding: 5px 10px;">Modo Oscuro</button>
+        </div>
+        <div class="user-info">Usuario: Analista Mesa de Partes</div>
+    </header>
+
+    <main class="container">
+        <aside class="panel form-panel">
+            <h3>Registrar Documento</h3>
+            <form id="formRegistro">
+                <div class="form-group">
+                    <label>Código Único</label>
+                    <input type="text" id="codigo" name="codigo" required placeholder="Ej: DOC001" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Documento</label>
+                    <select id="tipo" name="tipo" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Oficio">Oficio</option>
+                        <option value="Solicitud">Solicitud</option>
+                        <option value="Carta">Carta</option>
+                        <option value="Expediente">Expediente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Recepción</label>
+                    <input type="date" id="fecha" name="fecha" required>
+                </div>
+                <div class="form-group">
+                    <label>Remitente</label>
+                    <input type="text" id="remitente" name="remitente" required placeholder="Nombre o Institución">
+                </div>
+                <div class="form-group">
+                    <label>Despacho Destino</label>
+                    <select id="despacho" name="despacho" required>
+                        </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Registrar Documento</button>
+            </form>
+            <div id="toast" class="toast hidden"></div>
+        </aside>
+
+        <section class="panel table-panel">
+            <div class="toolbar">
+                <h3>Búsqueda y Seguimiento</h3>
+                <div class="filters">
+                    <input type="text" id="buscarCodigo" placeholder="Buscar por código..." autocomplete="off">
+                    <select id="filtroDespacho">
+                        <option value="">Todos los despachos</option>
+                        </select>
+                    <button class="btn btn-secondary" onclick="generarGuia()">Generar Guía</button>
+                    <button class="btn" style="background-color: #4b5563; color: white;" onclick="window.print()">Imprimir Reporte</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="tablaDocumentos">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Tipo</th>
+                            <th>Despacho</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
