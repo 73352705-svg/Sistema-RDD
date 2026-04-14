@@ -40,29 +40,28 @@ switch ($action) {
      * @description Registra un nuevo documento en estado "Pendiente de entrega".
      * Incluye validación para evitar códigos duplicados.
      */
-    case 'registrar_documento':
-        // Limpieza de datos para prevenir Inyección SQL
+     case 'registrar_documento':
         $codigo    = mysqli_real_escape_string($conn, $_POST['codigo']);
         $tipo      = mysqli_real_escape_string($conn, $_POST['tipo']);
         $fecha     = mysqli_real_escape_string($conn, $_POST['fecha']);
         $remitente = mysqli_real_escape_string($conn, $_POST['remitente']);
         $despacho  = (int)$_POST['despacho'];
 
-        // 1. Validar que el código único no exista previamente
         $check = mysqli_query($conn, "SELECT id FROM documento WHERE codigo_unico = '$codigo'");
         if(mysqli_num_rows($check) > 0){
-            echo json_encode(["status" => "error", "message" => "El código único '$codigo' ya existe."]);
-            exit;
+            echo json_encode(["status" => "error", "message" => "El código ya existe."]); exit;
         }
 
-        // 2. Insertar el documento
         $sql = "INSERT INTO documento (codigo_unico, tipo_documento, fecha_recepcion, remitente, id_despacho, estado) 
                 VALUES ('$codigo', '$tipo', '$fecha', '$remitente', $despacho, 'Pendiente de entrega')";
         
         if (mysqli_query($conn, $sql)) {
+            // NUEVO: Agregar el primer paso a la tabla seguimiento
+            $id_nuevo_doc = mysqli_insert_id($conn);
+            mysqli_query($conn, "INSERT INTO seguimiento (id_documento, estado, descripcion) 
+                                 VALUES ($id_nuevo_doc, 'Pendiente de entrega', 'Documento ingresado por Mesa de Partes')");
+            
             echo json_encode(["status" => "success", "message" => "Documento registrado con éxito."]);
-        } else {
-            echo json_encode(["status" => "error", "message" => "Error interno al registrar el documento."]);
         }
         break;
 
@@ -105,48 +104,35 @@ switch ($action) {
      * genera un número de guía único y cambia su estado a "Cargo de envío".
      * Utiliza Transacciones (Commit/Rollback) para asegurar la integridad de la base de datos.
      */
-    case 'generar_guia':
+     case 'generar_guia':
         $id_despacho = (int)$_POST['id_despacho'];
-        
-        // 1. Buscar si hay documentos pendientes para el despacho seleccionado
-        $sqlDocs = "SELECT id FROM documento WHERE id_despacho = $id_despacho AND estado = 'Pendiente de entrega'";
-        $resDocs = mysqli_query($conn, $sqlDocs);
+        $resDocs = mysqli_query($conn, "SELECT id FROM documento WHERE id_despacho = $id_despacho AND estado = 'Pendiente de entrega'");
         
         if(mysqli_num_rows($resDocs) == 0){
-            echo json_encode(["status" => "error", "message" => "No hay documentos pendientes para enviar a este despacho."]);
-            exit;
+            echo json_encode(["status" => "error", "message" => "No hay documentos pendientes."]); exit;
         }
 
-        // 2. Generar número de guía único (Ej: GUIA-00452)
         $num_guia = "GUIA-" . str_pad(rand(1, 99999), 5, "0", STR_PAD_LEFT);
         
-        // 3. Iniciar Transacción
         mysqli_begin_transaction($conn);
         try {
-            // Crear la cabecera de la guía
-            $sqlGuia = "INSERT INTO guia_remito (numero_guia, id_despacho, estado) VALUES ('$num_guia', $id_despacho, 'Cargo de envío')";
-            mysqli_query($conn, $sqlGuia);
-            $id_guia = mysqli_insert_id($conn); // Obtener el ID insertado
+            mysqli_query($conn, "INSERT INTO guia_remito (numero_guia, id_despacho, estado) VALUES ('$num_guia', $id_despacho, 'Cargo de envío')");
+            $id_guia = mysqli_insert_id($conn);
 
-            // Insertar el detalle por cada documento y actualizar su estado
             while($doc = mysqli_fetch_assoc($resDocs)){
                 $id_doc = $doc['id'];
-                
-                // Asociar documento a la guía
                 mysqli_query($conn, "INSERT INTO detalle_guia (id_guia, id_documento) VALUES ($id_guia, $id_doc)");
-                
-                // Actualizar estado para reflejar el flujo de procesos
                 mysqli_query($conn, "UPDATE documento SET estado = 'Cargo de envío' WHERE id = $id_doc");
+                
+                // NUEVO: Agregar a la tabla seguimiento que se asignó a una guía
+                mysqli_query($conn, "INSERT INTO seguimiento (id_documento, estado, descripcion) 
+                                     VALUES ($id_doc, 'Cargo de envío', 'Asignado a la guía $num_guia para despacho')");
             }
-            
-            // Confirmar los cambios
             mysqli_commit($conn);
-            echo json_encode(["status" => "success", "message" => "Éxito. Guía $num_guia generada. Documentos en estado de envío."]);
-            
+            echo json_encode(["status" => "success", "message" => "Guía generada."]);
         } catch (Exception $e) {
-            // Revertir cambios si hay error
             mysqli_rollback($conn);
-            echo json_encode(["status" => "error", "message" => "Error crítico al generar la guía: " . $e->getMessage()]);
+            echo json_encode(["status" => "error", "message" => "Error."]);
         }
         break;
 
@@ -154,17 +140,27 @@ switch ($action) {
      * @action actualizar_estado_documento
      * @description Actualiza el estado final de un documento (Entregado o Notificado).
      */
-    case 'actualizar_estado_documento':
+     case 'actualizar_estado_documento':
         $id_doc = (int)$_POST['id_documento'];
         $nuevo_estado = mysqli_real_escape_string($conn, $_POST['nuevo_estado']);
         
-        $sql = "UPDATE documento SET estado = '$nuevo_estado' WHERE id = $id_doc";
-        
-        if (mysqli_query($conn, $sql)) {
-            echo json_encode(["status" => "success", "message" => "Estado actualizado correctamente a: $nuevo_estado"]);
-        } else {
-            echo json_encode(["status" => "error", "message" => "Error al actualizar el estado."]);
+        if (mysqli_query($conn, "UPDATE documento SET estado = '$nuevo_estado' WHERE id = $id_doc")) {
+            // NUEVO: Registrar el cambio manual en el seguimiento
+            mysqli_query($conn, "INSERT INTO seguimiento (id_documento, estado, descripcion) 
+                                 VALUES ($id_doc, '$nuevo_estado', 'Actualización manual de estado del envío')");
+            
+            echo json_encode(["status" => "success", "message" => "Estado actualizado."]);
         }
+        break;
+
+        case 'ver_seguimiento':
+        $id_doc = (int)$_GET['id_documento'];
+        $sql = "SELECT * FROM seguimiento WHERE id_documento = $id_doc ORDER BY fecha_hora ASC";
+        $result = mysqli_query($conn, $sql);
+        
+        $data = [];
+        while ($row = mysqli_fetch_assoc($result)) { $data[] = $row; }
+        echo json_encode($data);
         break;
 
     default:
