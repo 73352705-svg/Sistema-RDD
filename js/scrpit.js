@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
             } else {
                 const total = seleccionados.length;
-                if (!confirm(¿Deseas generar una guía para ${total} documento(s)?)) {
+                if (!confirm(`¿Deseas generar una guía para ${total} documento(s)?`)) {
                     e.preventDefault();
                 }
             }
