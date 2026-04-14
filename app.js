@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarDespachos();
     cargarDocumentos();
 
-    // Setear la fecha actual por defecto
+    //setear la fecha
     document.getElementById('fecha').valueAsDate = new Date();
 
     // Evento para busqueda en tiempo real
