@@ -30,7 +30,7 @@ $resultado = mysqli_query($conn, $sql);
 
     <div class="container">
         <h3>Documentos Pendientes de Despacho</h3>
-        <form action="generar_guia.php" method="POST">
+        <form id="formGuia" action="generar_guia.php" method="POST">
             <table class="table table-hover shadow-sm">
                 <thead class="table-thead">
                     <tr>
@@ -58,5 +58,6 @@ $resultado = mysqli_query($conn, $sql);
             <button type="submit" class="btn btn-action">Generar Guía de Remito para Seleccionados</button>
         </form>
     </div>
+    <script src="js/scripts.js"></script>
 </body>
 </html>
